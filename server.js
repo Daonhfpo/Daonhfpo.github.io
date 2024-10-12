@@ -18,19 +18,24 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('message', (message) => {
-        // Ensure the incoming message is in the right format
-        try {
-            const parsedMessage = JSON.parse(message);
-            // Broadcast incoming message to all clients
+        const data = JSON.parse(message);
+        if (data.message) {
+            // Broadcast the chat message to all clients
             clients.forEach(client => {
                 if (client.readyState === WebSocket.OPEN) {
-                    client.send(JSON.stringify(parsedMessage)); // Send parsed message as JSON
+                    client.send(JSON.stringify({ message: data.message }));
                 }
             });
-        } catch (e) {
-            console.error('Error parsing incoming message:', e);
+        } else if (data.id) {
+            // Broadcast player updates to all clients
+            clients.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify(data)); // Send position and rotation updates
+                }
+            });
         }
     });
+    
 
     ws.on('close', () => {
         // Remove client on disconnect
