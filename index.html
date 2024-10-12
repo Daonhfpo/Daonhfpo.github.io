@@ -3,70 +3,202 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebSocket Multiplayer</title>
+    <title>WebSocket Multiplayer with Chat</title>
     <style>
         body {
             font-family: Arial, sans-serif;
+            overflow: hidden; /* Prevent scrolling */
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
         }
-        #users {
-            list-style-type: none;
-            padding: 0;
-        }
-        #messages {
+        #gameCanvas {
             border: 1px solid #ccc;
-            height: 200px;
-            overflow-y: auto;
-            margin-bottom: 10px;
+            width: 100%;
+            flex: 1; /* Allow canvas to grow and take up available space */
+            position: relative;
+            background-color: #f0f0f0;
+        }
+        .player {
+            width: 20px; /* Square size */
+            height: 20px; /* Square size */
+            position: absolute;
+            background-color: blue;
+            transform-origin: center; /* Set the rotation origin to center */
+        }
+        .username {
+            position: absolute;
+            text-align: center;
+            color: black;
+            font-weight: bold;
+            pointer-events: none; /* Prevent interaction */
+            margin-top: -30px; /* Position above the square */
+        }
+        #chatContainer {
+            background-color: #fff;
+            border-top: 1px solid #ccc;
+            padding: 10px;
+            max-height: 200px; /* Limit chat height */
+            overflow-y: auto; /* Scrollable */
+        }
+        #messageInput {
+            width: calc(100% - 100px); /* Make input take available space */
+            padding: 5px;
+        }
+        #sendButton {
+            padding: 5px;
         }
     </style>
 </head>
 <body>
-    <h1>WebSocket Multiplayer</h1>
-    <div id="messages"></div>
-    <ul id="users"></ul>
+    <div id="gameCanvas"></div>
+    <div id="chatContainer"></div>
     <input id="messageInput" type="text" placeholder="Type a message..." />
     <button id="sendButton">Send</button>
 
     <script>
         const ws = new WebSocket('ws://localhost:8080');
-        const messagesDiv = document.getElementById('messages');
-        const usersList = document.getElementById('users');
+        const canvas = document.getElementById('gameCanvas');
+        const chatContainer = document.getElementById('chatContainer');
         const messageInput = document.getElementById('messageInput');
         const sendButton = document.getElementById('sendButton');
 
+        const players = {}; // Store player elements by ID
+        const playerId = Math.random().toString(36).substr(2, 9); // Unique ID for the player
+        const playerName = prompt("Enter your username:") || "Player"; // Prompt for username
+
+        // Create the player element for this user
+        const playerElement = document.createElement('div');
+        playerElement.className = 'player';
+        canvas.appendChild(playerElement);
+
+        // Create a username element for this player
+        const usernameElement = document.createElement('div');
+        usernameElement.className = 'username';
+        usernameElement.textContent = playerName;
+        canvas.appendChild(usernameElement);
+
+        // Initialize player position and state
+        let playerX = canvas.clientWidth / 2;
+        let playerY = canvas.clientHeight / 2;
+        let rotation = 0; // Player rotation angle
+        const speed = 3; // Movement speed
+        const keys = {}; // Track pressed keys
+
+        // Update player position and rotation
+        function updatePlayer() {
+            playerElement.style.left = `${playerX}px`;
+            playerElement.style.top = `${playerY}px`;
+            playerElement.style.transform = `rotate(${rotation}deg)`; // Apply rotation
+            usernameElement.style.left = `${playerX}px`;
+            usernameElement.style.top = `${playerY}px`; // Position username above player
+        }
+
+        // Handle keydown and keyup events
+        window.addEventListener('keydown', (event) => {
+            keys[event.key] = true; // Track which keys are pressed
+        });
+
+        window.addEventListener('keyup', (event) => {
+            keys[event.key] = false; // Track released keys
+        });
+
+        // Main update loop
+        function gameLoop() {
+            if (keys['w']) playerY -= speed; // Move up
+            if (keys['s']) playerY += speed; // Move down
+            if (keys['a']) playerX -= speed; // Move left
+            if (keys['d']) playerX += speed; // Move right
+
+            sendPlayerUpdate(); // Send position and rotation updates
+            updatePlayer(); // Update display
+            requestAnimationFrame(gameLoop); // Call the next frame
+        }
+
+        // Send player position updates to the server
+        function sendPlayerUpdate() {
+            const message = JSON.stringify({ id: playerId, x: playerX, y: playerY, rotation, name: playerName });
+            ws.send(message);
+        }
+
+        // Handle incoming messages
         ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                if (data.message) {
-                    const messageItem = document.createElement('div');
-                    messageItem.textContent = data.message;
-                    messagesDiv.appendChild(messageItem);
-                }
-                if (data.total !== undefined) {
-                    updateUsers(data.total);
+                if (data.id && data.x !== undefined && data.y !== undefined) {
+                    if (!players[data.id]) {
+                        // Create a new player element if it doesn't exist
+                        const newPlayer = document.createElement('div');
+                        newPlayer.className = 'player';
+                        canvas.appendChild(newPlayer);
+                        players[data.id] = { element: newPlayer, usernameElement: null }; // Store the player element
+
+                        // Create a username element for the new player
+                        const newUsernameElement = document.createElement('div');
+                        newUsernameElement.className = 'username';
+                        newUsernameElement.textContent = data.name; // Set username
+                        canvas.appendChild(newUsernameElement);
+                        players[data.id].usernameElement = newUsernameElement; // Store the username element
+                    }
+                    // Update player position and rotation
+                    players[data.id].element.style.left = `${data.x}px`;
+                    players[data.id].element.style.top = `${data.y}px`;
+                    players[data.id].element.style.transform = `rotate(${data.rotation}deg)`; // Update rotation
+
+                    // Update username position
+                    players[data.id].usernameElement.style.left = `${data.x}px`;
+                    players[data.id].usernameElement.style.top = `${data.y}px`; // Position username above player
+                } else if (data.id && data.disconnect) {
+                    // Remove the player element if they disconnect
+                    if (players[data.id]) {
+                        canvas.removeChild(players[data.id].element);
+                        canvas.removeChild(players[data.id].usernameElement);
+                        delete players[data.id];
+                    }
+                } else if (data.message) {
+                    // Display chat messages
+                    const messageElement = document.createElement('div');
+                    messageElement.textContent = data.message;
+                    chatContainer.appendChild(messageElement);
+                    chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to the bottom
                 }
             } catch (e) {
                 console.error('Error parsing message:', e);
-                const messageItem = document.createElement('div');
-                messageItem.textContent = 'Received non-JSON message: ' + event.data; // Debugging
-                messagesDiv.appendChild(messageItem);
             }
         };
 
-        sendButton.onclick = () => {
-            const message = messageInput.value;
+        // Update the player on connection
+        ws.onopen = () => {
+            sendPlayerUpdate(); // Send initial position
+            requestAnimationFrame(gameLoop); // Start the game loop
+        };
+
+        // Rotate player based on mouse position
+        canvas.addEventListener('mousemove', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left; // Mouse X relative to the canvas
+            const mouseY = event.clientY - rect.top;  // Mouse Y relative to the canvas
+
+            // Calculate the angle between the player and the mouse
+            rotation = Math.atan2(mouseY - (playerY + 10), mouseX - (playerX + 10)) * (180 / Math.PI); // Offset to center
+            updatePlayer(); // Update the display of the player
+            sendPlayerUpdate(); // Send updated rotation to server
+        });
+
+        // Handle sending chat messages
+        sendButton.addEventListener('click', sendChatMessage);
+        messageInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                sendChatMessage();
+            }
+        });
+
+        function sendChatMessage() {
+            const message = messageInput.value.trim();
             if (message) {
-                ws.send(JSON.stringify({ message })); // Send message as JSON
-                messageInput.value = '';
-            }
-        };
-
-        function updateUsers(total) {
-            usersList.innerHTML = '';
-            for (let i = 1; i <= total; i++) {
-                const userItem = document.createElement('li');
-                userItem.textContent = 'User ' + i;
-                usersList.appendChild(userItem);
+                ws.send(JSON.stringify({ message: `${playerName}: ${message}` }));
+                messageInput.value = ''; // Clear input
             }
         }
     </script>
