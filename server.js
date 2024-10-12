@@ -10,20 +10,26 @@ wss.on('connection', (ws) => {
     console.log('New client connected. Total clients: ' + clients.length);
 
     // Broadcast to all clients when a new user connects
+    const welcomeMessage = JSON.stringify({ message: 'A new user has joined!', total: clients.length });
     clients.forEach(client => {
         if (client !== ws && client.readyState === WebSocket.OPEN) {
-            const message = JSON.stringify({ message: 'A new user has joined!', total: clients.length });
-            client.send(message);
+            client.send(welcomeMessage);
         }
     });
 
     ws.on('message', (message) => {
-        // Send incoming message to all clients
-        clients.forEach(client => {
-            if (client.readyState === WebSocket.OPEN) {
-                client.send(message); // Send as-is, should be a stringified JSON
-            }
-        });
+        // Ensure the incoming message is in the right format
+        try {
+            const parsedMessage = JSON.parse(message);
+            // Broadcast incoming message to all clients
+            clients.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify(parsedMessage)); // Send parsed message as JSON
+                }
+            });
+        } catch (e) {
+            console.error('Error parsing incoming message:', e);
+        }
     });
 
     ws.on('close', () => {
