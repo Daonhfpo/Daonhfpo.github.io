@@ -1,12 +1,60 @@
 <!DOCTYPE html>
-<html lang='en'>
+<html lang="en">
 <head>
-    <meta charset='UTF-8'>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>Your Website Title</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realistic Button Click Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        h1 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        #clickButton {
+            padding: 15px 30px;
+            font-size: 18px;
+            cursor: pointer;
+            color: white;
+            background-color: #007BFF;
+            border: none;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s ease;
+        }
+        #clickButton:hover {
+            background-color: #0056b3;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+            transform: translateY(-2px);
+        }
+        #clickButton:active {
+            background-color: #004494;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transform: translateY(0);
+        }
+    </style>
 </head>
 <body>
-    <h1>Welcome to My Personal Website!</h1>
-    <p>This is a simple website hosted on GitHub Pages.</p>
+
+    <h1>AirGun Vs Button</h1>
+    <h1 id="message">Click the button</h1>
+    <button id="clickButton">Click Me</button>
+
+    <script>
+        const button = document.getElementById('clickButton');
+        const message = document.getElementById('message');
+
+        button.addEventListener('click', () => {
+            message.textContent = 'Button Clicked! Thanks!';
+        });
+    </script>
+
 </body>
 </html>
