@@ -12,15 +12,16 @@ wss.on('connection', (ws) => {
     // Broadcast to all clients when a new user connects
     clients.forEach(client => {
         if (client !== ws && client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ message: 'A new user has joined!', total: clients.length }));
+            const message = JSON.stringify({ message: 'A new user has joined!', total: clients.length });
+            client.send(message);
         }
     });
 
     ws.on('message', (message) => {
-        // Broadcast incoming message to all clients
+        // Send incoming message to all clients
         clients.forEach(client => {
             if (client.readyState === WebSocket.OPEN) {
-                client.send(message); // Send the message as-is
+                client.send(message); // Send as-is, should be a stringified JSON
             }
         });
     });
