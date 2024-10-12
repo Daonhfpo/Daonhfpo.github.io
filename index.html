@@ -48,7 +48,7 @@
             } catch (e) {
                 console.error('Error parsing message:', e);
                 const messageItem = document.createElement('div');
-                messageItem.textContent = 'Received non-JSON message: ' + event.data; // Handle unexpected format
+                messageItem.textContent = 'Received non-JSON message: ' + event.data; // Debugging
                 messagesDiv.appendChild(messageItem);
             }
         };
