@@ -35,21 +35,28 @@
         const sendButton = document.getElementById('sendButton');
 
         ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.message) {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.message) {
+                    const messageItem = document.createElement('div');
+                    messageItem.textContent = data.message;
+                    messagesDiv.appendChild(messageItem);
+                }
+                if (data.total !== undefined) {
+                    updateUsers(data.total);
+                }
+            } catch (e) {
+                console.error('Error parsing message:', e);
                 const messageItem = document.createElement('div');
-                messageItem.textContent = data.message;
+                messageItem.textContent = 'Received: ' + event.data; // Handle unexpected format
                 messagesDiv.appendChild(messageItem);
-            }
-            if (data.total !== undefined) {
-                updateUsers(data.total);
             }
         };
 
         sendButton.onclick = () => {
             const message = messageInput.value;
             if (message) {
-                ws.send(JSON.stringify({ message }));
+                ws.send(JSON.stringify({ message })); // Send message as JSON
                 messageInput.value = '';
             }
         };
